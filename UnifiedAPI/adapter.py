@@ -1,8 +1,10 @@
 import json
+import uuid
+from typing import List, Dict
 from abc import ABC, abstractmethod
-from google.api_core.exceptions import AlreadyExists
+from google.api_core.exceptions import AlreadyExists, NotFound
 from google.cloud.pubsub import PublisherClient, SubscriberClient
-from kafka import KafkaProducer, KafkaConsumer
+from kafka import KafkaProducer, KafkaConsumer, KafkaAdminClient
 from kafka.errors import KafkaTimeoutError
 
 
@@ -43,12 +45,24 @@ class MessageBroker(ABC):
         pass
 
     @staticmethod
+    def add_id(message: Dict):
+
+        if 'id' not in message.keys():
+            message['id'] = str(uuid.uuid4())
+
+        return message
+
+    @staticmethod
     def encode_data(data):
         return json.dumps(data).encode("utf-8")
 
     @staticmethod
     def decode_data(data):
         return json.loads(data.decode("utf-8"))
+
+    @staticmethod
+    def send_success(message_id, topic):
+        print(f"Message id: {message_id} delivered to topic: {topic}")
 
 
 class PubsubBroker(MessageBroker):
@@ -81,9 +95,11 @@ class PubsubBroker(MessageBroker):
     def delete_topic(self, topic):
 
         topic_path = self.get_topic_path(topic)
-        self.producer.delete_topic(topic=topic_path)
-
-        print(f"Topic {topic} deleted from {self.project} project")
+        try:
+            self.producer.delete_topic(topic=topic_path)
+            print(f"Topic: {topic} deleted from project: {self.project}")
+        except NotFound:
+            print(f"Topic: {topic} does not exist in project: {self.project}")
 
     def create_subscriber(self, name, topic, **kwargs) -> None:
 
@@ -106,12 +122,14 @@ class PubsubBroker(MessageBroker):
 
         print(f"Subscription deleted: {subscription_path}.")
 
-    def send_message(self, topic, message):
+    def send_message(self, topic, message: Dict):
         topic_path = self.get_topic_path(topic)
-        future = self.producer.publish(topic_path, self.encode_data(message))
-        print(future.result())
+        message = self.add_id(message)
+        encoded_message = self.encode_data(message)
+        future = self.producer.publish(topic_path, encoded_message)
+        self.send_success(message['id'], topic)
 
-    def consume(self, sub_name, callback=print, timeout=10):
+    def consume(self, sub_name, callback=print, timeout=100):
 
         sub_path = self.get_subscriber_path(sub_name)
 
@@ -184,8 +202,9 @@ class KafkaBroker(MessageBroker):
     def create_topic(self, topic):
         pass
 
-    def delete_topic(self, topic):
-        pass
+    def delete_topic(self, topic: List):
+        admin = KafkaAdminClient(bootstrap_servers=[self.host])
+        admin.delete_topics(topic)
 
     def create_subscriber(self, name, topic, **kwargs):
 
@@ -224,9 +243,10 @@ class KafkaBroker(MessageBroker):
             print('Timed out')
 
     def send_message(self, topic, message):
+        message = self.add_id(message)
         encoded_message = self.encode_data(message)
         result = self.producer.send(topic, value=encoded_message)
-        print(result)
+        self.send_success(message['id'], topic)
 
     def __del__(self):
 
@@ -238,8 +258,9 @@ def pubsub_example():
     topic = 'testtopic'
 
     a = PubsubBroker("vectorassignment")
+    a.delete_topic(topic)
     for i in range(10):
-        a.send_message(topic, f"{i}")
+        a.send_message(topic, {'data': f"{i}"})
 
     a.create_subscriber(name, topic)
     a.consume(name)
@@ -247,11 +268,12 @@ def pubsub_example():
 
 def kafka_example():
     name = 'test'
-    topic = 'testtopic'
+    topic = 'testing'
 
     a = KafkaBroker("vectorassignment")
+    a.delete_topic([topic])
     for i in range(10):
-        a.send_message(topic, f"{i}")
+        a.send_message(topic, {'data': f"{i}"})
 
     a.create_subscriber(name, topic)
     a.consume(name)
