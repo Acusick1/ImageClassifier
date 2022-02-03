@@ -1,5 +1,5 @@
 import os
 
 dirpath = os.path.dirname(__file__)
-MODEL_DIR = f"{dirpath}\\saved_models"
-MODEL_NAME = "my_model"
+DATA_DIR = os.path.join(dirpath, "datasets")
+MODEL_DIR = os.path.join(dirpath, "saved_models")
