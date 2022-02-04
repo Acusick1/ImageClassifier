@@ -3,9 +3,17 @@ import uuid
 from typing import List, Dict
 from abc import ABC, abstractmethod
 from google.api_core.exceptions import AlreadyExists, NotFound
-from google.cloud.pubsub import PublisherClient, SubscriberClient
+from google.cloud.pubsub_v1 import PublisherClient, SubscriberClient, subscriber, publisher
 from kafka import KafkaProducer, KafkaConsumer, KafkaAdminClient
-from kafka.errors import KafkaTimeoutError
+from kafka.errors import KafkaTimeoutError, TopicAlreadyExistsError
+from kafka.admin import NewTopic
+
+
+def print_callback(message) -> None:
+    if isinstance(message, subscriber.message.Message):
+        message.ack()
+
+    print(message)
 
 
 class MessageBroker(ABC):
@@ -78,9 +86,10 @@ class PubsubBroker(MessageBroker):
     def producer(self):
         return PublisherClient()
 
-    def create_topic(self, topic, **kwargs):
+    def create_topic(self, topic, **kwargs) -> publisher.futures.Future:
 
         topic_path = self.get_topic_path(topic)
+        response = {}
 
         try:
             response = self.producer.create_topic(name=topic_path, **kwargs)
@@ -91,6 +100,8 @@ class PubsubBroker(MessageBroker):
 
         else:
             print(response)
+
+        return response
 
     def delete_topic(self, topic):
 
@@ -122,17 +133,21 @@ class PubsubBroker(MessageBroker):
 
         print(f"Subscription deleted: {subscription_path}.")
 
-    def send_message(self, topic, message: Dict):
+    def send_message(self, topic: str, message: Dict):
         topic_path = self.get_topic_path(topic)
         message = self.add_id(message)
         encoded_message = self.encode_data(message)
+
         future = self.producer.publish(topic_path, encoded_message)
+
+        if isinstance(future.exception(), NotFound):
+            raise NotFound(f"Topic: {topic} not found in project: {self.project}")
+
         self.send_success(message['id'], topic)
 
-    def consume(self, sub_name, callback=print, timeout=100):
+    def consume(self, sub_name, callback=print_callback, timeout=100):
 
         sub_path = self.get_subscriber_path(sub_name)
-
         future = self.subscriber.subscribe(sub_path, callback)
 
         try:
@@ -173,7 +188,7 @@ class KafkaBroker(MessageBroker):
 
     subscriptions = dict()
 
-    def __init__(self, project, host="localhost:9092"):
+    def __init__(self, project=None, host="localhost:9092"):
         self.project = project
         self.host = host
 
@@ -199,12 +214,20 @@ class KafkaBroker(MessageBroker):
     def producer(self, **kwargs):
         self.producer = KafkaProducer(bootstrap_servers=[self.host], **kwargs)
 
-    def create_topic(self, topic):
-        pass
+    def create_topic(self, topic_name: str, num_partitions: int = 1, replication_factor: int = 1):
+
+        new_topic = NewTopic(topic_name, num_partitions, replication_factor)
+        admin = KafkaAdminClient(bootstrap_servers=[self.host])
+        try:
+            test = admin.create_topics([new_topic])
+            print(test)
+        except TopicAlreadyExistsError:
+            print(f"Topic: {topic_name} already exists")
 
     def delete_topic(self, topic: List):
         admin = KafkaAdminClient(bootstrap_servers=[self.host])
-        admin.delete_topics(topic)
+        test = admin.delete_topics(topic)
+        print(test)
 
     def create_subscriber(self, name, topic, **kwargs):
 
@@ -229,7 +252,7 @@ class KafkaBroker(MessageBroker):
         else:
             print(f"Subscriber {name} does not exist")
 
-    def consume(self, sub_name, callback=print, timeout=10):
+    def consume(self, sub_name, callback=print_callback, timeout=10):
 
         if sub_name in self.subscriptions.keys():
             self.subscriptions[sub_name].config['consumer_timeout_ms'] = timeout * 1000
@@ -258,7 +281,7 @@ def pubsub_example():
     topic = 'testtopic'
 
     a = PubsubBroker("vectorassignment")
-    a.delete_topic(topic)
+    a.create_topic(topic)
     for i in range(10):
         a.send_message(topic, {'data': f"{i}"})
 
@@ -271,7 +294,7 @@ def kafka_example():
     topic = 'testing'
 
     a = KafkaBroker("vectorassignment")
-    a.delete_topic([topic])
+    # a.delete_topic([topic])
     for i in range(10):
         a.send_message(topic, {'data': f"{i}"})
 

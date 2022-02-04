@@ -2,7 +2,7 @@ import os
 import settings
 import numpy as np
 import tensorflow as tf
-from ImageClassifier import MODEL_DIR
+from ImageClassifier.settings import MODEL_DIR
 from UnifiedAPI import adapter
 
 
