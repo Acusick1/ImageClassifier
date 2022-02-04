@@ -1,9 +1,9 @@
 import os
 import pathlib
+import settings
 import tensorflow as tf
 import tensorflow_datasets as tfds
 import numpy as np
-from ImageClassifier import MODEL_DIR, DATA_DIR
 from datetime import datetime
 
 EXAMPLE_DATASET = "fashion_mnist"
@@ -76,9 +76,9 @@ def train(dataset: str = EXAMPLE_DATASET) -> None:
         print('Training fashion mnist example')
         train_ds, val_ds, test_ds, class_names = get_example(EXAMPLE_DATASET)
     else:
-        dataset_path = pathlib.Path(DATA_DIR, dataset)
+        dataset_path = pathlib.Path(settings.DATA_DIR, dataset)
         if not pathlib.Path.is_dir(dataset_path):
-            raise NotADirectoryError(f"Dataset {dataset} not found in {DATA_DIR}")
+            raise NotADirectoryError(f"Dataset {dataset} not found in {settings.DATA_DIR}")
 
         train_ds, val_ds, test_ds, class_names = preprocess(dataset_path)
 
@@ -92,10 +92,10 @@ def train(dataset: str = EXAMPLE_DATASET) -> None:
     print(f"\nTest accuracy: {round(test_acc * 100, 2)}%")
 
     # Saving
-    pathlib.Path.mkdir(pathlib.Path(MODEL_DIR), exist_ok=True)
+    pathlib.Path.mkdir(pathlib.Path(settings.MODEL_DIR), exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     model_name = '_'.join((dataset, timestamp))
-    model.save(pathlib.Path(MODEL_DIR, model_name))
+    model.save(pathlib.Path(settings.MODEL_DIR, model_name))
 
 
 def preprocess(dataset_path: pathlib.Path):

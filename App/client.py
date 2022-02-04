@@ -1,10 +1,7 @@
-import asyncio
+# import asyncio
+import settings
 import tensorflow as tf
-from UnifiedAPI.adapter import PubsubBroker, KafkaBroker
-
-POST_TOPIC = "client"
-PULL_TOPIC = "prediction2"
-PROJECT = "vectorassignment"
+from UnifiedAPI import adapter
 
 
 def receiver(message):
@@ -22,16 +19,16 @@ def send_predictions(producer):
 
     for i, e in enumerate(test_images):
         data = {'image': e.tolist()}
-        producer.send_message(POST_TOPIC, data)
+        producer.send_message(settings.POST_TOPIC, data)
         # time.sleep(1)
 
 
 if __name__ == "__main__":
 
-    broker = PubsubBroker(PROJECT)
-    # broker = KafkaBroker(PROJECT)
-    broker.create_topic(POST_TOPIC)
-    broker.create_topic(PULL_TOPIC)
-    broker.create_subscriber('pull_client', PULL_TOPIC)
+    broker = adapter.PubsubBroker(settings.PROJECT)
+    # broker = adapter.KafkaBroker(settings.PROJECT)
+    broker.create_topic(settings.POST_TOPIC)
+    broker.create_topic(settings.PULL_TOPIC)
+    broker.create_subscriber('pull_client', settings.PULL_TOPIC)
     send_predictions(broker)
     broker.consume('pull_client', timeout=1000)
