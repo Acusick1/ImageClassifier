@@ -3,6 +3,14 @@ name = "imageclassifier"
 version = "0.1.0"
 description = ""
 authors = ["Acusick1 <andrewcusick13@outlook.com>"]
+packages = [
+    { include = "ImageClassifier" },
+    { include = "ImageClassifier/**/*.py" },
+    { include = "UnifiedAPI" },
+    { include = "UnifiedAPI/**/*.py" },
+    { include = "App" },
+    { include = "App/**/*.py" },
+]
 
 [tool.poetry.dependencies]
 python = "3.9"
