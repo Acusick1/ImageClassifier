@@ -1,56 +1,60 @@
 import json
 import uuid
-import settings
-from typing import List, Dict
+from UnifiedAPI import settings
+from typing import Dict
 from abc import ABC, abstractmethod
 from concurrent.futures import TimeoutError
 from google.api_core.exceptions import AlreadyExists, NotFound
 from google.cloud.pubsub_v1 import PublisherClient, SubscriberClient, publisher
 from kafka import KafkaProducer, KafkaConsumer, KafkaAdminClient
-from kafka.errors import KafkaTimeoutError, TopicAlreadyExistsError
+from kafka.errors import TopicAlreadyExistsError
 from kafka.admin import NewTopic
+# TODO: Implement wait_for_future which accepts a future object and returns when it is completed. Avoids using things
+#  like time.sleep(5)
 
 
 class MessageBroker(ABC):
 
+    key = None
+
     @property
     @abstractmethod
     def subscriber(self):
-        pass
+        raise NotImplementedError
 
     @property
     @abstractmethod
     def producer(self):
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def create_topic(self, topic):
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def delete_topic(self, topic):
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def create_subscriber(self, name, topic):
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def delete_subscriber(self, name):
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def send_message(self, topic, message):
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def consume(self, sub_name, callback=print, timeout=10):
-        pass
+        raise NotImplementedError
 
     @staticmethod
     @abstractmethod
     def broker_callback(message, nested_callback=print) -> None:
-        pass
+        raise NotImplementedError
 
     @staticmethod
     def add_id(message: Dict):
@@ -74,6 +78,8 @@ class MessageBroker(ABC):
 
 
 class PubsubBroker(MessageBroker):
+
+    key = "google"
 
     def __init__(self, project):
         self.project = project
@@ -116,7 +122,7 @@ class PubsubBroker(MessageBroker):
 
         # subs = self.subscriber.list_subscriptions(project=f"projects/{self.project}")
         # TODO: Not a great way to do this, but can't assign sub to new topic without deleting (possibly detaching)
-        #  fisrt. Above expression makes it difficult to get names, otherwise would use that
+        #  first. Above expression makes it difficult to get names, otherwise would use that
         for _ in range(2):
             try:
                 self.subscriber.create_subscription(
@@ -146,23 +152,21 @@ class PubsubBroker(MessageBroker):
             raise NotFound(f"Topic: {topic} not found in project: {self.project}")
 
         self.send_success(message['id'], topic)
+        return future
 
-    def consume(self, sub_name, callback=print, timeout=100):
+    def consume(self, sub_name, callback=print, timeout: (int, float) = float('inf')):
 
         sub_path = self.get_subscriber_path(sub_name)
         future = self.subscriber.subscribe(sub_path, lambda message: self.broker_callback(message, callback))
         print(f"Beginning consumption of subscriber: {sub_name}")
 
-        # try:
         # When `timeout` is not set, result() will block indefinitely,
         # unless an exception is encountered first.
-        while True:
-            try:
-                future.result(timeout=timeout)
-            except (TimeoutError, KeyboardInterrupt):
-                future.cancel()  # Trigger the shutdown.
-                future.result()  # Block until the shutdown is complete.
-                break
+        try:
+            future.result(timeout=timeout)
+        except (TimeoutError, KeyboardInterrupt):
+            future.cancel()  # Trigger the shutdown.
+            future.result()  # Block until the shutdown is complete.
 
     def get_topic_path(self, topic):
 
@@ -195,6 +199,7 @@ class PubsubBroker(MessageBroker):
 
 class KafkaBroker(MessageBroker):
 
+    key = "kafka"
     subscriptions = dict()
 
     def __init__(self, project=None, host=settings.KAFKA_HOST):
@@ -223,26 +228,24 @@ class KafkaBroker(MessageBroker):
         except TopicAlreadyExistsError:
             print(f"Topic: {topic_name} already exists")
 
-    def delete_topic(self, topic: List):
-        admin = KafkaAdminClient(bootstrap_servers=[self.host])
-        test = admin.delete_topics(topic)
-        print(test)
+    def delete_topic(self, topic: str):
+        # TODO: This is breaking the connection, docs say AdminClient is early stages/unstable
+        # admin = KafkaAdminClient(bootstrap_servers=[self.host])
+        # admin.delete_topics([topic])
+        pass
 
-    def create_subscriber(self, name, topic, **kwargs):
+    def create_subscriber(self, name, topic, group="mygroup", **kwargs):
 
-        if self.subscriptions and name in self.subscriptions.keys():
-            print('subscriber already exists!')
-        else:
-            consumer = KafkaConsumer(
-                bootstrap_servers=[self.host],
-                client_id=name,
-                auto_offset_reset='earliest',
-                enable_auto_commit=True,
-                **kwargs,
-            )
+        consumer = KafkaConsumer(
+            topic,
+            bootstrap_servers=[self.host],
+            group_id=group,
+            client_id=name,
+            enable_auto_commit=True,
+            **kwargs,
+        )
 
-            consumer.subscribe([topic])
-            self.subscriptions[name] = consumer
+        self.subscriptions[name] = consumer
 
     def delete_subscriber(self, name):
 
@@ -251,23 +254,20 @@ class KafkaBroker(MessageBroker):
         else:
             print(f"Subscriber {name} does not exist")
 
-    def consume(self, sub_name, callback=print, timeout=10):
+    def consume(self, sub_name, callback=print, timeout: (int, float) = float('inf')):
 
-        if sub_name in self.subscriptions.keys():
+        if sub_name in self.subscriptions.keys() and timeout < float('inf'):
             self.subscriptions[sub_name].config['consumer_timeout_ms'] = timeout * 1000
 
         print(f"Beginning consumption of subscriber: {sub_name}")
-        try:
-            for message in self.subscriptions[sub_name]:
-                self.broker_callback(message, callback)
-
-        except KafkaTimeoutError:
-            print('Timed out')
+        for message in self.subscriptions[sub_name]:
+            self.broker_callback(message, callback)
 
     def send_message(self, topic, message):
         message = self.add_id(message)
         encoded_message = self.encode_data(message)
-        self.producer.send(topic, value=encoded_message).add_callback(self.send_success(message['id'], topic))
+        future = self.producer.send(topic, value=encoded_message).add_callback(self.send_success(message['id'], topic))
+        return future
 
     @staticmethod
     def broker_callback(message, nested_callback=print) -> None:
@@ -279,32 +279,29 @@ class KafkaBroker(MessageBroker):
         self.producer.close()
 
 
-def pubsub_example():
-    name = 'test'
-    topic = 'testtopic'
+# TODO: Better way of defining this, get class key + object
+# name = {sc.key: sc.__name__ for sc in MessageBroker.__subclasses__()}
+BROKERS = [PubsubBroker(settings.PROJECT), KafkaBroker(settings.PROJECT)]
 
-    a = PubsubBroker(settings.PROJECT)
-    a.create_topic(topic)
-    a.create_subscriber(name, topic)
+
+def example(broker):
+
+    broker.create_topic(settings.TEST_TOPIC)
+    broker.create_subscriber(settings.TEST_SUB, settings.TEST_TOPIC)
     for i in range(10):
-        a.send_message(topic, {'data': f"{i}"})
+        broker.send_message(settings.TEST_TOPIC, {'data': f"{i}"})
 
-    a.consume(name)
+    broker.consume(settings.TEST_SUB, timeout=10)
+    broker.delete_subscriber(settings.TEST_SUB)
+    broker.delete_topic(settings.TEST_TOPIC)
 
 
-def kafka_example():
-    name = 'test'
-    topic = 'testing'
-
-    a = KafkaBroker(settings.PROJECT)
-    for i in range(10):
-        a.send_message(topic, {'data': f"{i}"})
-
-    a.create_subscriber(name, topic)
-    a.consume(name)
+def main():
+    for broker in BROKERS:
+        print(f"Running example case on f{broker.key} broker")
+        example(broker)
+        print(f"Finished example")
 
 
 if __name__ == "__main__":
-
-    # pubsub_example()
-    kafka_example()
+    main()
