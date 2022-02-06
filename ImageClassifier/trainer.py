@@ -1,22 +1,18 @@
 import os
 import pathlib
+import argparse
 import settings
 import tensorflow as tf
 import tensorflow_datasets as tfds
 import numpy as np
 from datetime import datetime
 
-EXAMPLE_DATASET = "fashion_mnist"
-BATCH_SIZE = 32
-IMG_HEIGHT = 28
-IMG_WIDTH = 28
-
 
 def create_model(num_classes: int) -> tf.keras.Sequential:
 
     model = tf.keras.Sequential([
         tf.keras.layers.Rescaling(1./255),
-        tf.keras.layers.Flatten(input_shape=[IMG_HEIGHT, IMG_WIDTH]),  # Re-stacks layers n to single m * n array
+        tf.keras.layers.Flatten(input_shape=[settings.IMG_HEIGHT, settings.IMG_WIDTH]),  # Re-stacks layers n to single m * n array
         tf.keras.layers.Dense(128, activation='relu'),  # Fully connected layer
         tf.keras.layers.Dense(num_classes),  # Fully connected layer with number of nodes = number of classes
         tf.keras.layers.Softmax()  # Normalise output to class probabilities
@@ -57,28 +53,28 @@ def get_image_label_from_path(file_path, class_names: np.array, channels: int = 
     # Load the raw data from the file as a string
     img = tf.io.read_file(file_path)
     img = tf.io.decode_image(img, channels=channels, expand_animations=False)
-    img = tf.image.resize(img, [IMG_HEIGHT, IMG_WIDTH])
+    img = tf.image.resize(img, [settings.IMG_HEIGHT, settings.IMG_WIDTH])
     return img, label
 
 
 def configure_for_performance(ds: tf.data.Dataset) -> tf.data.Dataset:
     ds = ds.cache()
     ds = ds.shuffle(buffer_size=1000)
-    ds = ds.batch(BATCH_SIZE)
+    ds = ds.batch(settings.BATCH_SIZE)
     ds = ds.prefetch(buffer_size=tf.data.AUTOTUNE)
     return ds
 
 
-def train(dataset: str = EXAMPLE_DATASET) -> None:
+def train(dataset: str = settings.EXAMPLE_DATASET, epochs: int = 10) -> None:
 
-    if dataset == EXAMPLE_DATASET:
+    if dataset == settings.EXAMPLE_DATASET:
 
         print('Training fashion mnist example')
-        train_ds, val_ds, test_ds, class_names = get_example(EXAMPLE_DATASET)
+        train_ds, val_ds, test_ds, class_names = get_example()
     else:
-        dataset_path = pathlib.Path(settings.DATA_DIR, dataset)
+        dataset_path = pathlib.Path(settings.DATASET_DIR, dataset)
         if not pathlib.Path.is_dir(dataset_path):
-            raise NotADirectoryError(f"Dataset {dataset} not found in {settings.DATA_DIR}")
+            raise NotADirectoryError(f"Dataset {dataset} not found in {settings.DATASET_DIR}")
 
         train_ds, val_ds, test_ds, class_names = preprocess(dataset_path)
 
@@ -87,10 +83,11 @@ def train(dataset: str = EXAMPLE_DATASET) -> None:
     test_ds = configure_for_performance(test_ds)
 
     model = create_model(len(class_names))
-    model.fit(train_ds, validation_data=val_ds, epochs=50)
+    model.fit(train_ds, validation_data=val_ds, epochs=epochs)
     test_loss, test_acc = model.evaluate(test_ds, verbose=2)
     print(f"\nTest accuracy: {round(test_acc * 100, 2)}%")
 
+    # TODO: Save class names
     # Saving
     pathlib.Path.mkdir(pathlib.Path(settings.MODEL_DIR), exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -113,10 +110,10 @@ def preprocess(dataset_path: pathlib.Path):
     return train_ds, val_ds, test_ds, class_names
 
 
-def get_example(dataset: str = EXAMPLE_DATASET):
+def get_example():
 
     (train_ds, val_ds, test_ds), metadata = tfds.load(
-        dataset,
+        settings.EXAMPLE_DATASET,
         split=['train[:80%]', 'train[80%:90%]', 'train[90%:]'],
         with_info=True,
         as_supervised=True,
@@ -127,18 +124,19 @@ def get_example(dataset: str = EXAMPLE_DATASET):
 
 
 def main():
-    """
-    parser = argparse.ArgumentParser(description='Training CNN based on input dataset')
-    parser.add_argument("--dataset")
-    parser.add_argument("--verbose")
-    parser.add_argument("--imagesize")
+
+    parser = argparse.ArgumentParser(description="Training CNN based on input dataset")
+    parser.add_argument("--dataset",
+                        default=settings.EXAMPLE_DATASET,
+                        help=f"Specify dataset within dataset directory ({settings.DATASET_DIR})",
+                        )
+
+    # TODO: Allow image size to be set, potentially remove from settings or change to DEFAULT_IMG_SIZE
+    # parser.add_argument("--imagesize")
 
     args = parser.parse_args()
-    a = args.a
-    print(a)
-    """
 
-    train()
+    train(args.dataset)
 
 
 if __name__ == "__main__":
