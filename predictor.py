@@ -19,9 +19,8 @@ def get_prediction(message, broker):
 
     img = format_message_data(message)
     probs = model.predict(img)
-    probs = np.round(probs, 2)
 
-    result = {name: float(p) for name, p in zip(class_names, probs[0]) if p > 0.05}
+    result = {name: round(float(p), 2) for name, p in zip(class_names, probs[0]) if p > 0.05}
     out = {'id': message['id'], 'predictions': result}
     broker.send_message(RETURN_TOPIC, out)
 
@@ -72,7 +71,7 @@ if __name__ == "__main__":
 
     # Setting up model prediction topic and client subscriber
     broker.create_topic(RETURN_TOPIC)
-    broker.create_subscriber(CLIENT_SUB, RETURN_TOPIC)
+    # broker.create_subscriber(CLIENT_SUB, RETURN_TOPIC)
 
     # No timeout set, will block indefinitely
     broker.consume(MODEL_SUB, callback=lambda message: get_prediction(message, broker))

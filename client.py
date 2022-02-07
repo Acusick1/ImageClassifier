@@ -11,7 +11,8 @@ async def send_predictions(producer):
 
     _, (test_images, test_labels) = fashion_mnist.load_data()
 
-    test_images = test_images[10:101]
+    # Sending first 50 images for prediction
+    test_images = test_images[:50]
 
     for i, e in enumerate(test_images):
         data = {'image': e.tolist()}
@@ -45,10 +46,12 @@ def main():
         broker = adapter.PubsubBroker(PROJECT)
     elif args.broker == "kafka":
         broker = adapter.KafkaBroker(PROJECT)
-        # TODO: Shouldn't have to create sub here, fix when changed to different client library
-        broker.create_subscriber(CLIENT_SUB, RETURN_TOPIC)
     else:
         raise ValueError
+
+    # Ensure topic is created (if predictor not yet run)
+    broker.create_topic(RETURN_TOPIC)
+    broker.create_subscriber(CLIENT_SUB, RETURN_TOPIC)
 
     asyncio.run(run(broker))
 
