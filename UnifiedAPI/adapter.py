@@ -1,6 +1,6 @@
 import json
 import uuid
-from UnifiedAPI import settings
+from UnifiedAPI.settings import PROJECT, TEST_TOPIC, TEST_SUB, KAFKA_HOST
 from typing import Dict
 from abc import ABC, abstractmethod
 from concurrent.futures import TimeoutError
@@ -154,7 +154,7 @@ class PubsubBroker(MessageBroker):
         self.send_success(message['id'], topic)
         return future
 
-    def consume(self, sub_name, callback=print, timeout: (int, float) = float('inf')):
+    def consume(self, sub_name, callback=print, timeout: int = None):
 
         sub_path = self.get_subscriber_path(sub_name)
         future = self.subscriber.subscribe(sub_path, lambda message: self.broker_callback(message, callback))
@@ -193,8 +193,10 @@ class PubsubBroker(MessageBroker):
         message.ack()
 
     def __del__(self):
-
-        self.subscriber.close()
+        try:
+            self.subscriber.close()
+        except (TypeError, ImportError):
+            pass
 
 
 class KafkaBroker(MessageBroker):
@@ -202,7 +204,7 @@ class KafkaBroker(MessageBroker):
     key = "kafka"
     subscriptions = dict()
 
-    def __init__(self, project=None, host=settings.KAFKA_HOST):
+    def __init__(self, project=None, host=KAFKA_HOST):
         self.project = project
         self.host = host
 
@@ -254,9 +256,10 @@ class KafkaBroker(MessageBroker):
         else:
             print(f"Subscriber {name} does not exist")
 
-    def consume(self, sub_name, callback=print, timeout: (int, float) = float('inf')):
+    def consume(self, sub_name, callback=print, timeout: int = None):
 
-        if sub_name in self.subscriptions.keys() and timeout < float('inf'):
+        # Using same definition as pubsub timeout: None = block indefinitely, which is the default setting here
+        if sub_name in self.subscriptions.keys() and timeout is not None:
             self.subscriptions[sub_name].config['consumer_timeout_ms'] = timeout * 1000
 
         print(f"Beginning consumption of subscriber: {sub_name}")
@@ -275,30 +278,33 @@ class KafkaBroker(MessageBroker):
         nested_callback(decoded_data)
 
     def __del__(self):
+        try:
+            self.producer.close()
+        except (TypeError, ImportError):
+            pass
 
-        self.producer.close()
 
-
-# TODO: Better way of defining this, get class key + object
+# TODO: Better way of defining this, get class key + object. Should also be able to remove exceptions in __del__ when
+#  when this is fixed
 # name = {sc.key: sc.__name__ for sc in MessageBroker.__subclasses__()}
-BROKERS = [PubsubBroker(settings.PROJECT), KafkaBroker(settings.PROJECT)]
+BROKERS = [PubsubBroker(PROJECT), KafkaBroker(PROJECT)]
 
 
 def example(broker):
 
-    broker.create_topic(settings.TEST_TOPIC)
-    broker.create_subscriber(settings.TEST_SUB, settings.TEST_TOPIC)
+    broker.create_topic(TEST_TOPIC)
+    broker.create_subscriber(TEST_SUB, TEST_TOPIC)
     for i in range(10):
-        broker.send_message(settings.TEST_TOPIC, {'data': f"{i}"})
+        broker.send_message(TEST_TOPIC, {'data': f"{i}"})
 
-    broker.consume(settings.TEST_SUB, timeout=10)
-    broker.delete_subscriber(settings.TEST_SUB)
-    broker.delete_topic(settings.TEST_TOPIC)
+    broker.consume(TEST_SUB, timeout=10)
+    broker.delete_subscriber(TEST_SUB)
+    broker.delete_topic(TEST_TOPIC)
 
 
 def main():
     for broker in BROKERS:
-        print(f"Running example case on f{broker.key} broker")
+        print(f"Running example case on {broker.key} broker")
         example(broker)
         print(f"Finished example")
 
