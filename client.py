@@ -1,9 +1,9 @@
 import asyncio
 import argparse
 import tensorflow as tf
-from App.settings import PROJECT, REQUEST_TOPIC, CLIENT_SUB, RETURN_TOPIC
+from App.settings import REQUEST_TOPIC, CLIENT_SUB, RETURN_TOPIC
 from UnifiedAPI import adapter
-from UnifiedAPI.settings import BROKERS
+from UnifiedAPI.settings import PROJECT, BROKERS
 
 
 async def send_predictions(broker: adapter.MessageBroker) -> None:
@@ -54,6 +54,7 @@ def main():
 
     args = parser.parse_args()
 
+    # TODO: Function in UnifiedAPI that automates this, removes double dependency between here and BROKERS variable
     if args.broker == "pubsub":
         broker = adapter.PubsubBroker(PROJECT)
     elif args.broker == "kafka":

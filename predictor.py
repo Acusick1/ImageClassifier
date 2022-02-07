@@ -3,9 +3,9 @@ import pathlib
 import numpy as np
 import tensorflow as tf
 from ImageClassifier.settings import MODEL_DIR, DEFAULT_MNIST_MODEL
-from App.settings import PROJECT, REQUEST_TOPIC, RETURN_TOPIC, MODEL_SUB
+from App.settings import REQUEST_TOPIC, RETURN_TOPIC, MODEL_SUB
 from UnifiedAPI import adapter
-from UnifiedAPI.settings import BROKERS
+from UnifiedAPI.settings import PROJECT, BROKERS
 # TODO: Load latest version of given model
 # TODO: Load and parse class names
 # TODO: Generalise format_message_data, implement batching in place of np.expand_dims and passing individual images
