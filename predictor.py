@@ -3,20 +3,32 @@ import pathlib
 import numpy as np
 import tensorflow as tf
 from ImageClassifier.settings import MODEL_DIR, DEFAULT_MNIST_MODEL
-from App.settings import PROJECT, REQUEST_TOPIC, RETURN_TOPIC, MODEL_SUB, CLIENT_SUB
+from App.settings import PROJECT, REQUEST_TOPIC, RETURN_TOPIC, MODEL_SUB
 from UnifiedAPI import adapter
+from UnifiedAPI.settings import BROKERS
 # TODO: Load latest version of given model
 # TODO: Load and parse class names
+# TODO: Generalise format_message_data, implement batching in place of np.expand_dims and passing individual images
 
 
 def format_message_data(data):
+    """
+    Format data into usable format by model
+    :param data: data extracted from client message
+    :return: numpy image
+    """
     img = np.array(data['image'], dtype=np.uint8)
     img = np.expand_dims(img, 0)
     return img
 
 
-def get_prediction(message, broker):
-
+def get_prediction(message, broker: adapter.MessageBroker) -> None:
+    """
+    Passing client requests through model to make predictions, sending back via message broker
+    :param message: Client request to be processed
+    :param broker: MessageBroker concrete class to return predictions to model server
+    :return:
+    """
     img = format_message_data(message)
     probs = model.predict(img)
 
@@ -31,7 +43,9 @@ def main():
 
 
 if __name__ == "__main__":
-
+    """
+    Machine learning server. Receives prediction requests from client and returns results via message broker
+    """
     class_names = np.array(['T-shirt/top', 'Trouser', 'Pullover', 'Dress', 'Coat',
                             'Sandal', 'Shirt', 'Sneaker', 'Bag', 'Ankle boot'])
 
@@ -45,8 +59,8 @@ if __name__ == "__main__":
                         )
 
     parser.add_argument("--broker",
-                        default="pubsub",
-                        choices=["pubsub", "kafka"],
+                        default=BROKERS[0],
+                        choices=BROKERS,
                         help=f"Broker to send messages",
                         )
 

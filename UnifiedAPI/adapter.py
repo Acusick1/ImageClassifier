@@ -287,7 +287,7 @@ class KafkaBroker(MessageBroker):
 # TODO: Better way of defining this, get class key + object. Should also be able to remove exceptions in __del__ when
 #  when this is fixed
 # name = {sc.key: sc.__name__ for sc in MessageBroker.__subclasses__()}
-BROKERS = [PubsubBroker(PROJECT), KafkaBroker(PROJECT)]
+EXAMPLE_BROKERS = [PubsubBroker(PROJECT), KafkaBroker(PROJECT)]
 
 
 def example(broker):
@@ -303,7 +303,7 @@ def example(broker):
 
 
 def main():
-    for broker in BROKERS:
+    for broker in EXAMPLE_BROKERS:
         print(f"Running example case on {broker.key} broker")
         example(broker)
         print(f"Finished example")

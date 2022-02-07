@@ -28,3 +28,4 @@ Run ``$ python trainer.py -h`` to view command line options.
 - Additional training options (padded convolution layer, KFold cross validation)
 - Additional command line options (training method, image size, arguments to be passed to model.fit)
 - Save class names alongside model for use in App
+- Add visuals, make Jupyter notebook to give a walk-through of functionality and visual results for model development

@@ -19,7 +19,6 @@ def create_model(num_classes: int) -> tf.keras.Sequential:
     ])
 
     # Loss function measures accuracy during training
-    # Metrics used to monitor training and testing steps
     # Accuracy = fraction of images correctly classified
     model.compile(optimizer='adam',
                   loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
@@ -66,7 +65,7 @@ def configure_for_performance(ds: tf.data.Dataset) -> tf.data.Dataset:
     return ds
 
 
-def train(dataset_name, dataset_path=None, epochs: int = 10) -> None:
+def train(dataset_name: str, dataset_path=None, epochs: int = 10) -> None:
 
     if dataset_name == EXAMPLE_TF_DATASET or dataset_path is None:
 
