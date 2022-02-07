@@ -20,10 +20,11 @@ $ python trainer.py --dataset dataset_name --epochs 50
 ```
 
 At the moment these are the only command options. However, additional settings such as image size can be changed in `ImageClassifier/settings.py`.
+
 Run ``$ python trainer.py -h`` to view command line options.
 
 ## Next steps
-
+- Testing suite
 - Additional training options (padded convolution layer, KFold cross validation)
 - Additional command line options (training method, image size, arguments to be passed to model.fit())
 - Save class names alongside model for use in App
