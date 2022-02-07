@@ -38,7 +38,7 @@ $ python -m unittest
 ## Packages
 The repository is separated into 3 sub-packages:
 ### ImageClassifier
-A simple multi-class CNN trainer.
+A simple multi-class CNN trainer using TensorFlow.
 ### UnifiedAPI
 A unified message broker API, allowing both Google Pub/Sub and Apache Kafka to be used.
 ### App
