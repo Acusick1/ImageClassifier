@@ -12,7 +12,7 @@ To accomplish this, two top-level scripts should be run on separate terminals:
 
 ### Client
 The `client.py` script can be run directly using the default broker (Pub/Sub) or with the additional `broker` argument.
-Therefore to send and receive messages via Kafka:
+To send and receive messages via Kafka:
 
 ````commandline
 $ python client.py --broker kafka
@@ -34,8 +34,11 @@ By default, the predictor will use
 the latest saved fashion MNIST model (therefore run `trainer.py` first).
 
 ## Limitations & Next Steps
-At the moment, both client and server use the same argument parsing to select a message broker. However, in reality 
+- At the moment, both client and server use the same argument parsing to select a message broker. However, in reality 
 only the client should require this option, with the model consuming all implemented message brokers in parallel. 
-
-As mentioned previously, only the fashion MNIST dataset/model can be used in this example, this should be extended for 
+- As mentioned previously, only the fashion MNIST dataset/model can be used in this example, this should be extended for 
 the general case.
+- Allow predictions to be done by batch, not individually. Do this in conjunction with implementation of batching within
+UnifiedAPI
+- Make setup file to create subscribers and topics before running predictor and client, avoid duplicate code
+
