@@ -4,7 +4,7 @@ import argparse
 import tensorflow as tf
 import tensorflow_datasets as tfds
 import numpy as np
-from ImageClassifier.settings import MODEL_DIR, DATASET_DIR, IMG_WIDTH, IMG_HEIGHT, BATCH_SIZE, EXAMPLE_DATASET
+from ImageClassifier.settings import MODEL_DIR, DATASET_DIR, IMG_WIDTH, IMG_HEIGHT, BATCH_SIZE, EXAMPLE_TF_DATASET
 from datetime import datetime
 
 
@@ -68,7 +68,7 @@ def configure_for_performance(ds: tf.data.Dataset) -> tf.data.Dataset:
 
 def train(dataset_name, dataset_path=None, epochs: int = 10) -> None:
 
-    if dataset_name == EXAMPLE_DATASET or dataset_path is None:
+    if dataset_name == EXAMPLE_TF_DATASET or dataset_path is None:
 
         print('Training fashion mnist example')
         train_ds, val_ds, test_ds, class_names = get_example()
@@ -111,7 +111,7 @@ def preprocess(dataset_path: pathlib.Path):
 def get_example():
 
     (train_ds, val_ds, test_ds), metadata = tfds.load(
-        EXAMPLE_DATASET,
+        EXAMPLE_TF_DATASET,
         split=['train[:80%]', 'train[80%:90%]', 'train[90%:]'],
         with_info=True,
         as_supervised=True,
@@ -128,12 +128,13 @@ def main():
     )
 
     parser.add_argument("--dataset",
-                        default=EXAMPLE_DATASET,
+                        default=EXAMPLE_TF_DATASET,
                         help=f"Specify dataset within dataset directory ({DATASET_DIR})",
                         )
 
     parser.add_argument("--epochs",
                         default=3,
+                        type=int,
                         help=f"Number of training cycles",
                         )
 
@@ -142,7 +143,7 @@ def main():
 
     args = parser.parse_args()
 
-    if args.dataset == EXAMPLE_DATASET:
+    if args.dataset == EXAMPLE_TF_DATASET:
         dataset_path = None
     else:
         dataset_path = pathlib.Path(DATASET_DIR, args.dataset)

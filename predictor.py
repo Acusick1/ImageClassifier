@@ -2,8 +2,8 @@ import argparse
 import pathlib
 import numpy as np
 import tensorflow as tf
-from ImageClassifier.settings import MODEL_DIR
-from App.settings import PROJECT, REQUEST_TOPIC, RETURN_TOPIC, MODEL_SUB, CLIENT_SUB, EXAMPLE_MODEL
+from ImageClassifier.settings import MODEL_DIR, DEFAULT_MNIST_MODEL
+from App.settings import PROJECT, REQUEST_TOPIC, RETURN_TOPIC, MODEL_SUB, CLIENT_SUB
 from UnifiedAPI import adapter
 # TODO: Load latest version of given model
 # TODO: Load and parse class names
@@ -41,7 +41,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument("-model",
-                        default=EXAMPLE_MODEL,
+                        default=DEFAULT_MNIST_MODEL,
                         help=f"Name of trained model directory within {MODEL_DIR}"
                         )
 
