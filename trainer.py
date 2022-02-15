@@ -11,9 +11,14 @@ from datetime import datetime
 def create_model(num_classes: int) -> tf.keras.Sequential:
 
     model = tf.keras.Sequential([
-        tf.keras.layers.Rescaling(1./255),
-        tf.keras.layers.Flatten(input_shape=[IMG_HEIGHT, IMG_WIDTH]),  # Re-stacks layers n to single m * n array
+        # TODO: Remove rescaling from model, use in data preparation phase
+        tf.keras.layers.Rescaling(1./255),  # Normalising image to max of 1
+        tf.keras.layers.Conv2D(filters=32, kernel_size=3, strides=1, padding="SAME", activation="relu",
+                               input_shape=[IMG_HEIGHT, IMG_WIDTH, 1]),  # Convolution with zero padding
+        tf.keras.layers.MaxPooling2D(pool_size=2),  # Taking max value from 2x2 sub-matrices
+        tf.keras.layers.Flatten(),  # Re-stacks layers n to single m * n array
         tf.keras.layers.Dense(128, activation='relu'),  # Fully connected layer
+        tf.keras.layers.Dropout(0.5),  # 50% dropout to avoid over fitting
         tf.keras.layers.Dense(num_classes),  # Fully connected layer with number of nodes = number of classes
         tf.keras.layers.Softmax()  # Normalise output to class probabilities
     ])
@@ -132,7 +137,7 @@ def main():
                         )
 
     parser.add_argument("--epochs",
-                        default=3,
+                        default=50,
                         type=int,
                         help=f"Number of training cycles",
                         )
