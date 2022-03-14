@@ -66,9 +66,10 @@ COPY --from=builder-base $PYSETUP_PATH $PYSETUP_PATH
 RUN poetry install
 
 # will become mountpoint of our code
-WORKDIR /app
+# WORKDIR /app
 
 EXPOSE 8000
+# CMD ["python", "trainer.py"]
 CMD ["python", "client.py", "--broker", "kafka"]
 
 

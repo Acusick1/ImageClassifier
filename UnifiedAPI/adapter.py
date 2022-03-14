@@ -1,6 +1,7 @@
 import json
+import os
 import uuid
-from UnifiedAPI.settings import PROJECT, TEST_TOPIC, TEST_SUB, KAFKA_HOST
+from UnifiedAPI.settings import PROJECT, TEST_TOPIC, TEST_SUB
 from typing import Dict
 from abc import ABC, abstractmethod
 from concurrent.futures import TimeoutError
@@ -204,7 +205,7 @@ class KafkaBroker(MessageBroker):
     key = "kafka"
     subscriptions = dict()
 
-    def __init__(self, project=None, host=KAFKA_HOST):
+    def __init__(self, project=None, host=os.environ["KAFKA_HOST"]):
         self.project = project
         self.host = host
 

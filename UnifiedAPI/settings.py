@@ -1,5 +1,11 @@
+from os import environ as env
+
 PROJECT = "vectorassignment"
-KAFKA_HOST = "localhost:9092"
 TEST_TOPIC = "test_topic"
 TEST_SUB = "test_sub"
 BROKERS = ["pubsub", "kafka"]
+
+try:
+    KAFKA_HOST = env["KAFKA_HOST"]
+except KeyError:
+    env["KAFKA_HOST"] = "localhost:29092"
