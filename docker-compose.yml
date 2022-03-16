@@ -1,4 +1,4 @@
-version: '2'
+version: "3.9"
 services:
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
@@ -31,4 +31,6 @@ services:
       - kafka
     environment:
       KAFKA_HOST: kafka:29092
-      GOOGLE_APPLICATION_CREDENTIALS: $HOME/.ssh/vectorassignment-bec049cf2f15.json
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/.ssh/vectorassignment-bec049cf2f15.json
+    volumes:
+      - /tmp/.ssh/vectorassignment-bec049cf2f15.json:/tmp/.ssh/vectorassignment-bec049cf2f15.json
