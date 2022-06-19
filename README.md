@@ -1,7 +1,20 @@
-# VectorAI take home assignment
+# Client-Server Image Classifier
+
+This repository mimics a client interaction with a server based machine learning service. Models are trained, saved and served to classify incoming images from a client machine. This interaction is carried out in a robust fashion using a choice of two message brokers: Apache Kafka and Google Pub/Sub.
+
+---
+## Modules
+The repository is separated into 3 sub-modules:
+### ImageClassifier
+A simple multi-class CNN trainer using TensorFlow.
+### UnifiedAPI
+A unified message broker API, allowing both Google Pub/Sub and Apache Kafka to be used.
+### App
+An example app combining both the ImageClassifier and Unified API to mimic client requests (images) and model server responses (predictions).
 
 ---
 
+Individual README files are located within each sub-package directory.
 ## Installation
 
 The package has been made using [Poetry](https://python-poetry.org/), and can be installed via:
@@ -34,16 +47,3 @@ To validate the installation and message broker setup, run the test cases from t
 ```commandline
 $ python -m unittest
 ```
-
-## Packages
-The repository is separated into 3 sub-packages:
-### ImageClassifier
-A simple multi-class CNN trainer using TensorFlow.
-### UnifiedAPI
-A unified message broker API, allowing both Google Pub/Sub and Apache Kafka to be used.
-### App
-An example app combining both the ImageClassifier and Unified API to mimic client requests (images) and model server responses (predictions).
-
----
-
-Individual README files are located within each sub-package directory.
