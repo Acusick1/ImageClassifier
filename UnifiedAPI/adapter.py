@@ -16,7 +16,11 @@ from kafka.admin import NewTopic
 
 class MessageBroker(ABC):
 
-    key = None
+    subclasses = []
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        cls.subclasses.append(cls)
 
     @property
     @abstractmethod
@@ -79,8 +83,6 @@ class MessageBroker(ABC):
 
 
 class PubsubBroker(MessageBroker):
-
-    key = "google"
 
     def __init__(self, project):
         self.project = project
@@ -202,7 +204,6 @@ class PubsubBroker(MessageBroker):
 
 class KafkaBroker(MessageBroker):
 
-    key = "kafka"
     subscriptions = dict()
 
     def __init__(self, project=None, host=os.environ["KAFKA_HOST"]):
@@ -285,12 +286,6 @@ class KafkaBroker(MessageBroker):
             pass
 
 
-# TODO: Better way of defining this, get class key + object. Should also be able to remove exceptions in __del__ when
-#  when this is fixed
-# name = {sc.key: sc.__name__ for sc in MessageBroker.__subclasses__()}
-EXAMPLE_BROKERS = [PubsubBroker(PROJECT), KafkaBroker(PROJECT)]
-
-
 def example(broker):
 
     broker.create_topic(TEST_TOPIC)
@@ -304,9 +299,9 @@ def example(broker):
 
 
 def main():
-    for broker in EXAMPLE_BROKERS:
-        print(f"Running example case on {broker.key} broker")
-        example(broker)
+    for broker in MessageBroker.subclasses:
+        print(f"Running example case on {broker.__name__} broker")
+        example(broker(project=PROJECT))
         print(f"Finished example")
 
 
